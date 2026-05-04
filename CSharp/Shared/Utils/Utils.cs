@@ -108,7 +108,10 @@ namespace QuickInteractions
     {
       get
       {
-        if (!IsPlayerInFriendlyLocation) return false;
+        if (Level.Loaded == null) return false;
+
+        bool hasStationContext = Level.Loaded.StartOutpost != null || Level.Loaded.BeaconStation != null;
+        if (!hasStationContext) return false;
         if (IsCurrentOutpostAbandoned) return false;
 
         float? reputation = CurrentOutpostReputationPercent;

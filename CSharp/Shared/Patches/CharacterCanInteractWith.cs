@@ -153,45 +153,12 @@ namespace QuickInteractions
 
 #if CLIENT
       bool isRemoteItemInteraction = FakeInput.IsRemoteItemInteraction(item.ID);
-#endif
-
-      // 检查是否在潜艇编辑器中
-      bool isInSubEditor = GameMain.SubEditorScreen != null && Screen.Selected == GameMain.SubEditorScreen;
-
       {
-        // 检查设备是否有NonInteractable属性，如果有则不允许交互
-        if (item.NonInteractable)
-        {
-          return;
-        }
-
-#if CLIENT
-        if (isRemoteItemInteraction)
-        {
-                  if (!Utils.CanUseRemoteQuickInteractionAtCurrentLocation)
-                  {
-                    __result = false;
-                    return;
-                  }
-
-          Debugger.Log($"Remote item interaction allowed with {item.Name} (ID: {item.ID})", DebugLevel.Networking);
-          __result = true;
-          return;
-        }
-#endif
-
-        bool isInFriendlyLocation = Utils.IsSubmarineInFriendlyLocation(item.Submarine);
-
-        // 在潜艇编辑器中允许交互所有设备，否则仅允许有效站点内远程交互
-        if (isInSubEditor || (Utils.CanUseRemoteQuickInteractionAtCurrentLocation && isInFriendlyLocation))
-        {
-          __result = true;
-        }
+        // 按需求禁用所有设备类远程快速交互
+        __result = false;
+        return;
       }
-
-      // if (item == Fabricators?.OutpostFabricator) Logger.Log($"{__instance} {item}");
-      // if (item == Fabricators?.OutpostDeconstructor) Logger.Log($"{__instance} {item}");
-      // if (item == Fabricators?.OutpostMedFabricator) Logger.Log($"{__instance} {item}");
+#endif
     }
   }
 }
