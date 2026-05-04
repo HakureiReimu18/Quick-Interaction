@@ -93,7 +93,12 @@ namespace QuickInteractions
 #if CLIENT
         if (isRemoteInteraction)
         {
-          // 客户端远程交互：记录日志并直接允许
+          if (!Utils.CanUseRemoteQuickInteractionAtCurrentLocation)
+          {
+            __result = false;
+            return false;
+          }
+
           Debugger.Log($"Remote interaction allowed with {c.Name} (ID: {c.ID})", DebugLevel.Networking);
           __result = true;
           return false;
@@ -102,26 +107,14 @@ namespace QuickInteractions
 
         // 非远程交互或服务端：仍然执行基本的位置检查
         // 但放宽条件以支持模组的便捷交互功能
-        bool playerInOutpost = Level.Loaded != null && Level.Loaded.StartOutpost != null && __instance.Submarine == Level.Loaded.StartOutpost;
-        bool playerInPlayerSub = __instance.Submarine != null && __instance.Submarine.TeamID == CharacterTeamType.Team1;
+        bool playerInAllowedStation = Utils.CanUseRemoteQuickInteractionAtCurrentLocation;
+        bool npcInFriendlyLocation = Utils.IsSubmarineInFriendlyLocation(c.Submarine);
 
-        bool npcOnPlayerSub = c.Submarine != null && c.Submarine.TeamID == CharacterTeamType.Team1;
-        bool npcInOutpost = Level.Loaded != null && Level.Loaded.StartOutpost != null && c.Submarine == Level.Loaded.StartOutpost;
-
-        // 放宽的允许条件：
-        // 1. 玩家在哨站（可以与哨站NPC交互）
-        // 2. NPC在玩家潜艇上（可以在潜艇上与船员交互）
-        // 3. 玩家和NPC在同一位置（原始逻辑）
-        bool allowInteraction = playerInOutpost ||  // 玩家在哨站
-                              npcOnPlayerSub ||     // NPC在玩家潜艇
-                              (playerInPlayerSub && npcOnPlayerSub) ||  // 都在潜艇
-                              (playerInOutpost && npcInOutpost);       // 都在哨站
+        bool allowInteraction = playerInAllowedStation && npcInFriendlyLocation;
 
         if (!allowInteraction)
         {
-          // 最后的兜底：如果是通过快速交互按钮触发的，也允许
-          // 因为UI层已经验证过该角色应该显示
-          __result = true;  // 允许交互
+          __result = false;
           return false;
         }
       }
@@ -165,29 +158,6 @@ namespace QuickInteractions
       // 检查是否在潜艇编辑器中
       bool isInSubEditor = GameMain.SubEditorScreen != null && Screen.Selected == GameMain.SubEditorScreen;
 
-      // 检查物品是否为加工台、解构仪、医疗加工台、深潜通用加工台、矿石精炼机、弹药重装机、深潜钢板修复台、弹药制造机、TSM加工台、SCP加工台或EK Utility加工台，并且位于哨站或玩家潜艇内
-      if (item?.Prefab.Identifier != null && item.Submarine != null &&
-          (item.Prefab.Identifier.Value == "fabricator" ||
-           item.Prefab.Identifier.Value == "deconstructor" ||
-           item.Prefab.Identifier.Value == "medicalfabricator" ||
-           item.Prefab.Identifier.Value == "deep_general_fabricator" ||
-           item.Prefab.Identifier.Value == "ore_refining_machine" ||
-           item.Prefab.Identifier.Value == "ammoreload_machine" ||
-           item.Prefab.Identifier.Value == "deep_plate_repairtable" ||
-           item.Prefab.Identifier.Value == "tsm_fabricator_ammo" ||
-           item.Prefab.Identifier.Value == "tsm_fabricator" ||
-           item.Prefab.Identifier.Value == "tsm_fabricator_quality" ||
-           item.Prefab.Identifier.Value == "tsm_fabricator_skin" ||
-           item.Prefab.Identifier.Value == "scp_portableammofabricator" ||
-           item.Prefab.Identifier.Value == "scp_portableweaponfabricator" ||
-           item.Prefab.Identifier.Value == "scp_advportableweaponfabricator" ||
-           item.Prefab.Identifier.Value == "scp_chemistrystation" ||
-           item.Prefab.Identifier.Value == "scp_ammofabricator" ||
-           item.Prefab.Identifier.Value == "scp_weaponfabricator" ||
-           item.Prefab.Identifier.Value == "ekutility_placeablefabricator" ||
-           item.Prefab.Identifier.Value == "ekutility_placeablefabricator_adaptive" ||
-           item.Prefab.Identifier.Value == "ekutility_placeablemedicalfabricator" ||
-           item.Prefab.Identifier.Value == "ekutility_placeabledeconstructor"))
       {
         // 检查设备是否有NonInteractable属性，如果有则不允许交互
         if (item.NonInteractable)
@@ -198,23 +168,22 @@ namespace QuickInteractions
 #if CLIENT
         if (isRemoteItemInteraction)
         {
+                  if (!Utils.CanUseRemoteQuickInteractionAtCurrentLocation)
+                  {
+                    __result = false;
+                    return;
+                  }
+
           Debugger.Log($"Remote item interaction allowed with {item.Name} (ID: {item.ID})", DebugLevel.Networking);
           __result = true;
           return;
         }
 #endif
 
-        // 检查设备是否在哨站
-        bool isInOutpost = Level.Loaded != null && Level.Loaded.StartOutpost != null && item.Submarine == Level.Loaded.StartOutpost;
-        // 检查设备是否在玩家潜艇
-        bool isInPlayerSub = item.Submarine.TeamID == CharacterTeamType.Team1;
-        // 检查玩家是否在玩家潜艇内
-        bool playerInPlayerSub = __instance.Submarine != null && __instance.Submarine.TeamID == CharacterTeamType.Team1;
-        // 检查玩家是否在哨站内
-        bool playerInOutpost = Level.Loaded != null && Level.Loaded.StartOutpost != null && __instance.Submarine == Level.Loaded.StartOutpost;
+        bool isInFriendlyLocation = Utils.IsSubmarineInFriendlyLocation(item.Submarine);
 
-        // 在潜艇编辑器中允许交互所有设备，否则按正常规则显示
-        if (isInSubEditor || (isInPlayerSub && playerInPlayerSub) || (isInOutpost && playerInOutpost && !playerInPlayerSub))
+        // 在潜艇编辑器中允许交互所有设备，否则仅允许有效站点内远程交互
+        if (isInSubEditor || (Utils.CanUseRemoteQuickInteractionAtCurrentLocation && isInFriendlyLocation))
         {
           __result = true;
         }

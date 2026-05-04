@@ -346,15 +346,10 @@ namespace QuickInteractions
           // 检查是否在潜艇编辑器中
           bool isInSubEditor = GameMain.SubEditorScreen != null && Screen.Selected == GameMain.SubEditorScreen;
           
-          // 检查玩家是否在友好位置（起始哨站或信标站）
-          bool playerInFriendlyLocation = Utils.IsPlayerInFriendlyLocation;
-          // 检查玩家是否在玩家潜艇内
-          bool playerInPlayerSub = Character.Controlled?.Submarine != null && Character.Controlled.Submarine.TeamID == CharacterTeamType.Team1;
+          // 仅在站点中显示快速交互，且必须不是废弃前哨站，声望不能低于-60%
+          bool canUseStationRemoteInteraction = Utils.CanUseRemoteQuickInteractionAtCurrentLocation;
 
-          // 只有当满足以下条件之一时，才显示NPC按钮：
-          // 1. 玩家在友好位置且不在玩家潜艇内（原始条件）
-          // 2. 或者玩家在玩家潜艇内（新增例外：支持巡回中玩家潜艇上的NPC）
-          if (!isInSubEditor && ((playerInFriendlyLocation && !playerInPlayerSub) || playerInPlayerSub))
+          if (!isInSubEditor && canUseStationRemoteInteraction)
           {
             foreach (Character character in QuickTalk.WantToTalk)
             {
@@ -405,16 +400,9 @@ namespace QuickInteractions
                 continue;
               }
               
-              // 检查设备是否在友好位置（起始哨站或信标站）
+              // 设备仅在有效站点内显示（非废弃、声望>=-60%）
               bool isInFriendlyLocation = Utils.IsSubmarineInFriendlyLocation(item.Submarine);
-              // 检查设备是否在玩家潜艇
-              bool isInPlayerSub = item.Submarine.TeamID == CharacterTeamType.Team1;
-
-              // 设备显示规则（严格按位置控制）：
-              // - 玩家在自己潜艇上时 → 只显示自己船上的设备
-              // - 玩家在哨站时 → 只显示哨站上的设备
-              // - 潜艇编辑器中 → 显示所有设备
-              if (isInSubEditor || (isInPlayerSub && playerInPlayerSub) || (isInFriendlyLocation && !playerInPlayerSub && playerInFriendlyLocation))
+              if (isInSubEditor || (canUseStationRemoteInteraction && isInFriendlyLocation))
               {
                 if (item.Prefab.Identifier.Value == "deconstructor")
                 {
