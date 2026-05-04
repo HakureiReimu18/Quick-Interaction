@@ -136,6 +136,13 @@ namespace QuickInteractions
     }
 #endif
 
+#if !CLIENT
+    public static bool CanUseRemoteQuickInteractionAtCurrentLocation => false;
+
+    public static bool IsSubmarineInFriendlyLocation(Submarine sub) => false;
+#endif
+
+
     public static void PrintMethodParams(MethodInfo mi)
     {
       foreach (ParameterInfo pi in mi.GetParameters())
